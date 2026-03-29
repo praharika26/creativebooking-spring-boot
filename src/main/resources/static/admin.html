@@ -1,47 +1,81 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Admin - Manage Requests</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard | Creative Request System</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
 
-<h2>All Requests</h2>
-<button onclick="loadRequests()">Load Requests</button>
-
-<ul id="list"></ul>
+<div class="container">
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <h2>Admin - Manage All Requests</h2>
+            <button onclick="loadRequests()" class="secondary">Sync Data</button>
+        </div>
+        <div id="list">
+             <div style="text-align: center; color: var(--text-muted); padding: 2rem;">Loading creative data...</div>
+        </div>
+    </div>
+</div>
 
 <script>
+async function loadRequests() {
+    const list = document.getElementById("list");
+    list.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 2rem;">Fetching dashboard data...</div>`;
 
-function loadRequests() {
-    fetch("/requests")
-    .then(res => res.json())
-    .then(data => {
-        let list = document.getElementById("list");
+    try {
+        const response = await fetch("/requests");
+        const data = await response.json();
+        
         list.innerHTML = "";
+        if (data.length === 0) {
+            list.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 2rem;">No submissions yet. Dashboard is empty.</div>`;
+            return;
+        }
 
         data.forEach(r => {
-            let item = `<li>
-                ${r.clubName} | ${r.requestType} | ${r.status}
-                <button onclick="complete(${r.id})">Complete</button>
-                <button onclick="deleteReq(${r.id})">Delete</button>
-            </li>`;
-            list.innerHTML += item;
+            const isCompleted = r.status === 'Completed';
+            const statusClass = isCompleted ? 'status-completed' : '';
+            const item = document.createElement("div");
+            item.innerHTML = `
+                <li>
+                    <div class="req-info">
+                        <b>${r.clubName} <span class="status-badge ${statusClass}">${r.status}</span></b>
+                        <span>${r.requestType} • Deadline: ${r.deadline}</span>
+                        <div style="margin-top: 0.5rem; color: var(--text-muted); font-size: 0.8rem;">
+                            <i>"${r.description}"</i>
+                        </div>
+                    </div>
+                    <div class="actions">
+                        ${!isCompleted ? `<button onclick="complete(${r.id})" class="success" style="padding: 0.5rem 1rem">Mark Ready</button>` : ''}
+                        <button onclick="deleteReq(${r.id})" class="danger" style="padding: 0.5rem">Delete</button>
+                    </div>
+                </li>`;
+            list.appendChild(item.firstElementChild);
         });
-    });
+    } catch (err) {
+        list.innerHTML = `<div style="text-align: center; color: var(--danger); padding: 2rem;">Failed to load data. Backend offline?</div>`;
+    }
 }
 
-function complete(id) {
-    fetch(`/requests/${id}/status?status=Completed`, {
-        method: "PUT"
-    }).then(() => loadRequests());
+async function complete(id) {
+    if (!confirm("Confirm completion? This will update the status to Completed.")) return;
+    const response = await fetch(`/requests/${id}/status?status=Completed`, { method: "PUT" });
+    if (response.ok) loadRequests();
 }
 
-function deleteReq(id) {
-    fetch(`/requests/${id}`, {
-        method: "DELETE"
-    }).then(() => loadRequests());
+async function deleteReq(id) {
+    if (!confirm("Are you sure you want to permanently delete this request?")) return;
+    const response = await fetch(`/requests/${id}`, { method: "DELETE" });
+    if (response.ok) loadRequests();
 }
 
+window.onload = loadRequests;
 </script>
 
 </body>

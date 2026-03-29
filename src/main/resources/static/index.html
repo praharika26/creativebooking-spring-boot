@@ -1,84 +1,125 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Creative Request System</title>
-    <style>
-        body { font-family: Arial; padding: 20px; }
-        input { margin: 5px; padding: 5px; }
-        button { padding: 6px 10px; margin: 5px; }
-        li { margin: 10px 0; }
-    </style>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
 
-<h2>Submit Request</h2>
+<div class="container">
+    <div class="card">
+        <h2>Submit Creative Request</h2>
+        <div class="input-group">
+            <input id="clubName" placeholder="Club Name (e.g. Leo Club)">
+        </div>
+        <div class="input-group">
+            <input id="type" placeholder="Request Type (e.g. Logo Design)">
+        </div>
+        <div class="input-group">
+            <textarea id="desc" placeholder="Brief Description..." rows="3"></textarea>
+        </div>
+        <div class="input-group">
+            <input id="deadline" type="date">
+        </div>
+        <button onclick="submitRequest()" id="submitBtn">Submit Request</button>
+    </div>
 
-<input id="clubName" placeholder="Club Name"><br>
-<input id="type" placeholder="Request Type"><br>
-<input id="desc" placeholder="Description"><br>
-<input id="deadline" placeholder="Deadline"><br>
+    <hr style="border-color: var(--border); margin: 3rem 0;">
 
-<button onclick="submitRequest()">Submit</button>
-
-<hr>
-
-<h2>All Requests</h2>
-<button onclick="loadRequests()">Load Requests</button>
-
-<ul id="list"></ul>
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <h2>Recent Requests</h2>
+            <button onclick="loadRequests()" class="secondary">Refresh Data</button>
+        </div>
+        <div id="list">
+             <div style="text-align: center; color: var(--text-muted); padding: 2rem;">Click Refresh to load content.</div>
+        </div>
+    </div>
+</div>
 
 <script>
+async function submitRequest() {
+    const btn = document.getElementById("submitBtn");
+    btn.innerHTML = "Sending...";
+    btn.disabled = true;
 
-function submitRequest() {
-    fetch("/requests", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            clubName: document.getElementById("clubName").value,
-            requestType: document.getElementById("type").value,
-            description: document.getElementById("desc").value,
-            deadline: document.getElementById("deadline").value
-        })
-    })
-    .then(res => res.json())
-    .then(data => {
-        alert("Request Submitted ✅");
-        loadRequests();
-    });
+    try {
+        const response = await fetch("/requests", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                clubName: document.getElementById("clubName").value,
+                requestType: document.getElementById("type").value,
+                description: document.getElementById("desc").value,
+                deadline: document.getElementById("deadline").value
+            })
+        });
+
+        if (response.ok) {
+            alert("Request Submitted Successfully! ✅");
+            document.querySelectorAll("input, textarea").forEach(el => el.value = "");
+            loadRequests();
+        }
+    } catch (err) {
+        alert("Submission failed. Check backend.");
+    } finally {
+        btn.innerHTML = "Submit Request";
+        btn.disabled = false;
+    }
 }
 
-function loadRequests() {
-    fetch("/requests")
-    .then(res => res.json())
-    .then(data => {
-        let list = document.getElementById("list");
+async function loadRequests() {
+    const list = document.getElementById("list");
+    list.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 2rem;">Loading data...</div>`;
+
+    try {
+        const response = await fetch("/requests");
+        const data = await response.json();
+        
         list.innerHTML = "";
+        if (data.length === 0) {
+            list.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 2rem;">No requests found yet.</div>`;
+            return;
+        }
 
         data.forEach(r => {
-            let item = `<li>
-                <b>${r.clubName}</b> | ${r.requestType} | ${r.status}
-                <button onclick="complete(${r.id})">Complete</button>
-                <button onclick="deleteReq(${r.id})">Delete</button>
-            </li>`;
-            list.innerHTML += item;
+            const statusClass = r.status === 'Completed' ? 'status-completed' : '';
+            const item = document.createElement("div");
+            item.innerHTML = `
+                <li>
+                    <div class="req-info">
+                        <b>${r.clubName} <span class="status-badge ${statusClass}">${r.status}</span></b>
+                        <span>${r.requestType} • Due: ${r.deadline}</span>
+                    </div>
+                    <div class="actions">
+                        <button onclick="complete(${r.id})" class="success" style="padding: 0.5rem">Done</button>
+                        <button onclick="deleteReq(${r.id})" class="danger" style="padding: 0.5rem">X</button>
+                    </div>
+                </li>`;
+            list.appendChild(item.firstElementChild);
         });
-    });
+    } catch (err) {
+        list.innerHTML = `<div style="text-align: center; color: var(--danger); padding: 2rem;">Error fetching data.</div>`;
+    }
 }
 
-function complete(id) {
-    fetch(`/requests/${id}/status?status=Completed`, {
-        method: "PUT"
-    }).then(() => loadRequests());
+async function complete(id) {
+    const response = await fetch(`/requests/${id}/status?status=Completed`, { method: "PUT" });
+    if (response.ok) loadRequests();
 }
 
-function deleteReq(id) {
-    fetch(`/requests/${id}`, {
-        method: "DELETE"
-    }).then(() => loadRequests());
+async function deleteReq(id) {
+    if (!confirm("Are you sure?")) return;
+    const response = await fetch(`/requests/${id}`, { method: "DELETE" });
+    if (response.ok) loadRequests();
 }
 
+window.onload = loadRequests;
 </script>
 
 </body>
