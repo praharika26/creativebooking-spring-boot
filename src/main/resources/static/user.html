@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>User - Submit Request</title>
+</head>
+<body>
+
+<h2>Submit Creative Request</h2>
+
+<input id="clubName" placeholder="Club Name"><br><br>
+<input id="type" placeholder="Request Type"><br><br>
+<input id="desc" placeholder="Description"><br><br>
+<input id="deadline" placeholder="Deadline"><br><br>
+
+<button onclick="submitRequest()">Submit</button>
+
+<script>
+function submitRequest() {
+    fetch("/requests", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            clubName: document.getElementById("clubName").value,
+            requestType: document.getElementById("type").value,
+            description: document.getElementById("desc").value,
+            deadline: document.getElementById("deadline").value
+        })
+    })
+    .then(res => res.json())
+    .then(() => alert("Request Submitted ✅"));
+}
+</script>
+
+</body>
+</html>

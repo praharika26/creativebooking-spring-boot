@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Creative Request System</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        input { margin: 5px; padding: 5px; }
+        button { padding: 6px 10px; margin: 5px; }
+        li { margin: 10px 0; }
+    </style>
+</head>
+<body>
+
+<h2>Submit Request</h2>
+
+<input id="clubName" placeholder="Club Name"><br>
+<input id="type" placeholder="Request Type"><br>
+<input id="desc" placeholder="Description"><br>
+<input id="deadline" placeholder="Deadline"><br>
+
+<button onclick="submitRequest()">Submit</button>
+
+<hr>
+
+<h2>All Requests</h2>
+<button onclick="loadRequests()">Load Requests</button>
+
+<ul id="list"></ul>
+
+<script>
+
+function submitRequest() {
+    fetch("/requests", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            clubName: document.getElementById("clubName").value,
+            requestType: document.getElementById("type").value,
+            description: document.getElementById("desc").value,
+            deadline: document.getElementById("deadline").value
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert("Request Submitted ✅");
+        loadRequests();
+    });
+}
+
+function loadRequests() {
+    fetch("/requests")
+    .then(res => res.json())
+    .then(data => {
+        let list = document.getElementById("list");
+        list.innerHTML = "";
+
+        data.forEach(r => {
+            let item = `<li>
+                <b>${r.clubName}</b> | ${r.requestType} | ${r.status}
+                <button onclick="complete(${r.id})">Complete</button>
+                <button onclick="deleteReq(${r.id})">Delete</button>
+            </li>`;
+            list.innerHTML += item;
+        });
+    });
+}
+
+function complete(id) {
+    fetch(`/requests/${id}/status?status=Completed`, {
+        method: "PUT"
+    }).then(() => loadRequests());
+}
+
+function deleteReq(id) {
+    fetch(`/requests/${id}`, {
+        method: "DELETE"
+    }).then(() => loadRequests());
+}
+
+</script>
+
+</body>
+</html>

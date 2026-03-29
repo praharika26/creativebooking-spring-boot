@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin - Manage Requests</title>
+</head>
+<body>
+
+<h2>All Requests</h2>
+<button onclick="loadRequests()">Load Requests</button>
+
+<ul id="list"></ul>
+
+<script>
+
+function loadRequests() {
+    fetch("/requests")
+    .then(res => res.json())
+    .then(data => {
+        let list = document.getElementById("list");
+        list.innerHTML = "";
+
+        data.forEach(r => {
+            let item = `<li>
+                ${r.clubName} | ${r.requestType} | ${r.status}
+                <button onclick="complete(${r.id})">Complete</button>
+                <button onclick="deleteReq(${r.id})">Delete</button>
+            </li>`;
+            list.innerHTML += item;
+        });
+    });
+}
+
+function complete(id) {
+    fetch(`/requests/${id}/status?status=Completed`, {
+        method: "PUT"
+    }).then(() => loadRequests());
+}
+
+function deleteReq(id) {
+    fetch(`/requests/${id}`, {
+        method: "DELETE"
+    }).then(() => loadRequests());
+}
+
+</script>
+
+</body>
+</html>
